@@ -1,0 +1,10 @@
+# Data
+*.json
+*.pdf
+*.txt
+
+# Env
+.env.local
+
+# MacOS
+.DS_Store

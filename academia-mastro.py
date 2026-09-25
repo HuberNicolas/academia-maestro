@@ -27,7 +27,7 @@ Although Limitations, why is it still considerably good?
 
 
 ### LOADER
-if False:
+if True:
     
     PATH = "./Reading"
 
@@ -105,11 +105,7 @@ for i in range(1, 21, 1):
         'messages': [
             {
                 'role': "user",
-                'content': "Provide a short sumamry: What is the paper about (abstract)?",
-            },
-            {
-                'role': "user",
-                'content': "What problem did they want to solve?",
+                'content': "Provide a short summary: What is the paper about (abstract)?",
             },
             {
                 'role': "user",
@@ -117,15 +113,19 @@ for i in range(1, 21, 1):
             },
             {
                 'role': "user",
+                'content': "What dimensions did they compare in FL?",
+            },
+             {
+                'role': "user",
+                'content': "How did they investigate DFL?",
+            },
+            {
+                'role': "user",
                 'content': "What is the main contribution of the paper?",
             },
             {
                 'role': "user",
-                'content': "What are limitations?",
-            },
-            {
-                'role': "user",
-                'content': "Although Limitations, why is it still considerably good?",
+                'content': "What are the main findings?",
             },
         ]
     }

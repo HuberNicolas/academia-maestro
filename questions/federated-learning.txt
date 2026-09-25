@@ -1,0 +1,7 @@
+# Questions used in 2024 for a literature review of federated learning (FL) surveys.
+Provide a short summary: What is the paper about?
+What methodology did they use?
+What dimensions did they compare in FL?
+How did they investigate decentralized federated learning (DFL)?
+What is the main contribution of the paper?
+What are the main findings?

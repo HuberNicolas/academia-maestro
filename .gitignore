@@ -1,10 +1,19 @@
-# Data
-*.json
-*.pdf
-*.txt
+# Papers, answers and uploaded source IDs
+Reading/
+Summary/
+Summary_old/
+sources.json
+ids.txt
 
-# Env
+# Secrets
+.env
 .env.local
 
-# MacOS
+# Python
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# macOS
 .DS_Store

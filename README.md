@@ -1,87 +1,157 @@
-# PDF Summary Extractor
+<div align="center">
 
-This project extracts summaries and other relevant information from PDF research papers using the ChatPDF API.
+# Academia Maestro
 
-## Getting Started
+**Ask the same questions about many research papers and collect the answers, using the ChatPDF API**
 
-### Prerequisites
+![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
+![ChatPDF](https://img.shields.io/badge/ChatPDF-API-7C3AED)
+![uv](https://img.shields.io/badge/uv-managed-DE5FE9?logo=uv&logoColor=white)
+![Ruff](https://img.shields.io/badge/Ruff-D7FF64?logo=ruff&logoColor=black)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
-- Python 3.x
-- Poetry
+[Quick start](#quick-start) · [Usage](#usage) · [Questions](#questions) · [Development](#development)
 
-### Installation
+</div>
 
-1. **Clone the repository:**
+Academia Maestro helps with literature reviews. It uploads the PDFs in a folder to [ChatPDF](https://www.chatpdf.com/),
+asks each paper the same list of questions, and saves the answers as one JSON file per paper, so the papers can be
+compared side by side.
 
-    ```bash
-    git clone https://github.com/HuberNicolas/academia-maestro.git
-    cd academia-maestro
-    ```
+## Features
 
-2. **Install the required dependencies using Poetry:**
+- 📄 **Batch upload** of every PDF in a folder and its subfolders
+- ❓ **Your own questions** from a plain text file, one per line
+- 🗂️ **One JSON file per paper** with an answer for each question
+- ♻️ **Resumable**: uploaded papers are remembered in `sources.json`, and papers with answers are skipped
 
-    ```bash
-    poetry install
-    ```
+> [!NOTE]
+> Built in July 2024 for a literature review of federated learning surveys. Updated in 2026 to current dependencies,
+> uv and Ruff.
 
-3. **Create necessary folders:**
+> [!WARNING]
+> The ChatPDF API is a paid service. Every upload and every question is one request; ten papers with six questions
+> cost 70 requests.
 
-    ```bash
-    mkdir Reading Summary
-    ```
+## Contents
 
-4. **Add your research papers:**
+- [Quick start](#quick-start)
+- [Usage](#usage)
+- [Questions](#questions)
+- [Output](#output)
+- [Repository structure](#repository-structure)
+- [Development](#development)
+- [Known issues](#known-issues)
+- [License](#license)
+- [Author](#author)
 
-    Place your PDF research papers in the `Reading` folder.
+## Quick start
 
-5. **Configure the API key:**
+Requirements: [uv](https://docs.astral.sh/uv/getting-started/installation/) and a
+[ChatPDF API key](https://www.chatpdf.com/docs/api/backend).
 
-    Create a file named `.env.local` in the root directory of the project and add your ChatPDF API key:
+1. Clone the repository:
 
-    ```plaintext
-    CHATPDF_KEY=your_api_key_here
-    ```
+   ```bash
+   git clone git@github.com:HuberNicolas/academia-maestro.git
+   ```
+
+   ```bash
+   cd academia-maestro
+   ```
+
+2. Install the dependencies:
+
+   ```bash
+   uv sync
+   ```
+
+3. Create the `.env` file and add your key as `CHATPDF_KEY`:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+4. Put your PDFs into the folder `Reading/`, then upload them and ask the questions:
+
+   ```bash
+   uv run academia-maestro run
+   ```
 
 ## Usage
 
-1. **Run the script:**
+```text
+academia-maestro [--papers DIR] [--out DIR] [--sources FILE] [--questions FILE] [--overwrite] {upload,ask,run}
+```
 
-    Execute the Python script to start processing the PDF files and extracting the required information:
+| Command | What it does |
+|---|---|
+| `upload` | Uploads each PDF that is not in `sources.json` yet and stores its ChatPDF source ID there |
+| `ask` | Asks every question about every paper in `sources.json` and writes the answers to the output folder |
+| `run` | `upload`, then `ask` |
 
-    ```bash
-    poetry run python academia-maestro.py
-    ```
+| Option | Default | Meaning |
+|---|---|---|
+| `--papers` | `Reading` | Folder with the PDFs |
+| `--out` | `Summary` | Folder for the JSON answers |
+| `--sources` | `sources.json` | Uploaded PDFs and their source IDs |
+| `--questions` | six general questions | Text file with your own questions |
+| `--overwrite` | off | Ask again for papers that already have an answer file |
 
-2. **Output:**
+The key is read from `CHATPDF_KEY` in the environment, in `.env` or in `.env.local` (which wins).
 
-    The JSON files with the extracted information will be saved in the `Summary` folder.
+## Questions
 
-## Script Details
+Without `--questions`, each paper gets six general questions: a summary, the problem, the methodology, the main
+contribution, the limitations and why the paper is still valuable. For your own questions, write a text file with
+one question per line; lines starting with `#` are ignored. [`questions/federated-learning.txt`](questions/federated-learning.txt)
+holds the questions used for the 2024 review:
 
-The script performs the following tasks:
+```bash
+uv run academia-maestro --questions questions/federated-learning.txt ask
+```
 
-1. Loads environment variables from `.env` and `.env.local` files.
-2. Traverses the `Reading` folder to find all PDF files.
-3. Uploads each PDF file to the ChatPDF API and retrieves a source ID.
-4. Uses the source ID to request specific information from the PDF, including:
-    - A short summary (abstract)
-    - The problem addressed by the paper
-    - The methodology used
-    - The main contributions of the paper
-    - The limitations of the study
-    - The value of the paper despite its limitations
-5. Saves the extracted information in JSON format in the `Summary` folder.
+Each question is sent as its own request, so the answers do not depend on each other.
 
-## Example
+## Output
 
-Below is an example of how the JSON output will look like:
+`Summary/<paper>.json` maps each question to ChatPDF's answer, or to `null` if the request failed:
 
 ```json
 {
-    "Provide a short sumamry: What is the paper about (abstract)?": "Summary of the Paper...",
-    "What problem did they want to solve?": "Problem addressed...",
-    "What Methodology did they use?": "Methodology...",
-    "What is the main contribution of the paper?": "Main contribution...",
-    "What are limitations?": "Limitations...",
-    "Although Limitations, why is it still considerably good?": "Value despite limitations..."
+  "What methodology did they use?": "The authors conducted a systematic literature review …",
+  "What is the main contribution of the paper?": "…"
 }
+```
+
+## Repository structure
+
+| Path | Content |
+|---|---|
+| [`src/academia_maestro/cli.py`](src/academia_maestro/cli.py) | Command-line interface, upload and question loop |
+| [`src/academia_maestro/chatpdf.py`](src/academia_maestro/chatpdf.py) | Small client for the ChatPDF API |
+| [`questions/`](questions/) | Example question lists |
+| [`tests/`](tests/) | Tests with a fake client; they do not call ChatPDF |
+
+## Development
+
+| Task | Command |
+|---|---|
+| Run the tests | `uv run pytest` |
+| Lint | `uv run ruff check .` |
+| Format | `uv run ruff format .` |
+
+## Known issues
+
+- ChatPDF limits a conversation to about 2,500 tokens; very long questions are cut off.
+- The tests use a fake client. The 2026 version has not been run against the real API, to avoid costs.
+- Uploaded PDFs stay in your ChatPDF account until you delete them there.
+
+## License
+
+The code is licensed under the [MIT License](LICENSE). Papers you upload keep their own copyright; they are not part
+of this repository.
+
+## Author
+
+Nicolas Huber · [GitHub](https://github.com/HuberNicolas) · nicolas.huber.dev@gmail.com

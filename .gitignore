@@ -3,6 +3,8 @@ Reading/
 Summary/
 Summary_old/
 sources.json
+sources-*.json
+*.csv
 ids.txt
 
 # Secrets

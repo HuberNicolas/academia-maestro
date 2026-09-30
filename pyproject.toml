@@ -1,13 +1,15 @@
 [project]
 name = "academia-maestro"
-version = "0.2.0"
-description = "Ask ChatPDF the same questions about many research papers and save the answers as JSON"
+version = "0.3.0"
+description = "Ask ChatPDF, Claude or a local Ollama model the same questions about many research papers"
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [{ name = "Nicolas Huber", email = "nicolas.huber.dev@gmail.com" }]
 license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
+    "anthropic>=1.10.0",
+    "pypdf>=6.19.0",
     "python-dotenv>=1.2.3",
     "requests>=2.34.2",
 ]

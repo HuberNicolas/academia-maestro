@@ -12,7 +12,15 @@ Open tasks. See also [Known issues](README.md#known-issues).
 - [x] Add tests with a fake client and Ruff
 - [ ] Run once against the real ChatPDF API (costs requests)
 
-## 2. Publish
+## 2. Providers
+
+- [x] Add Claude (Files API, prompt caching) and local models via Ollama
+- [x] Ask questions in parallel, retry rate limits, re-ask only missing or failed answers
+- [x] Add `table` to combine the answers into one CSV
+- [ ] Run once against the Claude API (costs tokens)
+- [ ] Run once against a local Ollama model
+
+## 3. Publish
 
 - [x] Add the MIT License
 - [x] Replace the committed `.env` placeholder with `.env.example`

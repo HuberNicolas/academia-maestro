@@ -2,40 +2,48 @@
 
 # Academia Maestro
 
-**Ask the same questions about many research papers and collect the answers, using the ChatPDF API**
+**Ask the same questions about many research papers and get a comparison table for your literature review**
 
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
 ![ChatPDF](https://img.shields.io/badge/ChatPDF-API-7C3AED)
+![Claude](https://img.shields.io/badge/Claude-API-D97757?logo=anthropic&logoColor=white)
+![Ollama](https://img.shields.io/badge/Ollama-local-000000?logo=ollama&logoColor=white)
 ![uv](https://img.shields.io/badge/uv-managed-DE5FE9?logo=uv&logoColor=white)
 ![Ruff](https://img.shields.io/badge/Ruff-D7FF64?logo=ruff&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-[Quick start](#quick-start) · [Usage](#usage) · [Questions](#questions) · [Development](#development)
+[Quick start](#quick-start) · [Literature review](#systematic-literature-review) · [Providers](#providers) · [Usage](#usage) · [Development](#development)
 
 </div>
 
-Academia Maestro helps with literature reviews. It uploads the PDFs in a folder to [ChatPDF](https://www.chatpdf.com/),
-asks each paper the same list of questions, and saves the answers as one JSON file per paper, so the papers can be
-compared side by side.
+Academia Maestro helps with systematic literature reviews. It sends the PDFs in a folder to a language model, asks
+each paper the same list of questions and saves the answers as one JSON file per paper. `table` then combines them
+into one CSV: one row per paper, one column per question. That is the comparison table a literature review needs to
+show what existing work covers and where the research gap is.
 
 ## Features
 
-- 📄 **Batch upload** of every PDF in a folder and its subfolders
+- 📄 **Batch processing** of every PDF in a folder and its subfolders
+- 🤖 **Three providers**: [ChatPDF](https://www.chatpdf.com/), [Claude](https://www.anthropic.com/api) or a local model with [Ollama](https://ollama.com/)
 - ❓ **Your own questions** from a plain text file, one per line
-- 🗂️ **One JSON file per paper** with an answer for each question
-- ♻️ **Resumable**: uploaded papers are remembered in `sources.json`, and papers with answers are skipped
+- 📊 **Comparison table** as CSV for Excel, Numbers or LaTeX
+- ♻️ **Resumable**: uploaded papers are remembered, and only new or failed questions are asked again
+- ⚡ **Fast**: questions about a paper run in parallel; rate limits and server errors are retried
 
 > [!NOTE]
 > Built in July 2024 for a literature review of federated learning surveys. Updated in 2026 to current dependencies,
-> uv and Ruff.
+> uv and Ruff, with Claude and Ollama as further providers.
 
 > [!WARNING]
-> The ChatPDF API is a paid service. Every upload and every question is one request; ten papers with six questions
-> cost 70 requests.
+> ChatPDF and Claude are paid services. With ChatPDF, every upload and every question is one request; ten papers with
+> six questions cost 70 requests. With Claude you pay per token; the paper is cached, so further questions about the
+> same paper cost about a tenth of the first. Ollama runs on your own machine and costs nothing.
 
 ## Contents
 
 - [Quick start](#quick-start)
+- [Systematic literature review](#systematic-literature-review)
+- [Providers](#providers)
 - [Usage](#usage)
 - [Questions](#questions)
 - [Output](#output)
@@ -47,8 +55,9 @@ compared side by side.
 
 ## Quick start
 
-Requirements: [uv](https://docs.astral.sh/uv/getting-started/installation/) and a
-[ChatPDF API key](https://www.chatpdf.com/docs/api/backend).
+Requirements: [uv](https://docs.astral.sh/uv/getting-started/installation/) and one of: a
+[ChatPDF API key](https://www.chatpdf.com/docs/api/backend), a [Claude API key](https://platform.claude.com/) or
+[Ollama](https://ollama.com/download) with a model.
 
 1. Clone the repository:
 
@@ -66,7 +75,7 @@ Requirements: [uv](https://docs.astral.sh/uv/getting-started/installation/) and 
    uv sync
    ```
 
-3. Create the `.env` file and add your key as `CHATPDF_KEY`:
+3. Create the `.env` file and add the key of your provider:
 
    ```bash
    cp .env.example .env
@@ -78,27 +87,93 @@ Requirements: [uv](https://docs.astral.sh/uv/getting-started/installation/) and 
    uv run academia-maestro run
    ```
 
+5. Combine the answers into `Summary.csv`:
+
+   ```bash
+   uv run academia-maestro table
+   ```
+
+## Systematic literature review
+
+A typical workflow, for example for a review following [PRISMA](https://www.prisma-statement.org/):
+
+1. **Collect** the papers that passed your screening in `Reading/`.
+2. **Write the questions** that make up the columns of your comparison table, one per line, for example:
+
+   ```text
+   Which data set does the paper use?
+   Is the approach evaluated on real devices or only in simulation?
+   Does the paper address privacy attacks? Answer with yes, no or partly, then one sentence.
+   What future work do the authors name?
+   ```
+
+   Closed questions ("Answer with yes, no or partly") give short cells that are easy to compare; open questions give
+   material for the text.
+
+3. **Run** `academia-maestro --questions my-questions.txt run`, then `academia-maestro table`.
+4. **Open** `Summary.csv` in a spreadsheet, check every cell against the paper and shorten it.
+5. **Find the gap**: columns where most papers answer "no" or "not addressed" show what existing work does not
+   cover. The table is the evidence for that claim in your thesis or paper.
+
+If you add a question later, run `ask` again: only the new question is asked, existing answers are kept.
+
+> [!IMPORTANT]
+> Language models make mistakes. Use the answers as a first draft and check them against the papers before you cite
+> them.
+
+## Providers
+
+| Provider | `--provider` | Key | Reads the PDF | Default model |
+|---|---|---|---|---|
+| ChatPDF | `chatpdf` (default) | `CHATPDF_KEY` | Text, on ChatPDF's servers | fixed by ChatPDF |
+| Claude | `claude` | `ANTHROPIC_API_KEY` | Text, figures and tables, via the Files API | `claude-opus-5` |
+| Ollama | `ollama` | none | Text only, extracted locally with pypdf | none, set `--model` |
+
+```bash
+uv run academia-maestro --provider claude run
+```
+
+```bash
+uv run academia-maestro --provider ollama --model qwen3 run
+```
+
+- **Claude** uploads each PDF once with the Files API and caches it, so each further question only pays for the
+  question and the answer. Choose a cheaper model with `--model claude-sonnet-5`. Instead of `ANTHROPIC_API_KEY`,
+  a login with `ant auth login` works too.
+- **Ollama** keeps the papers on your machine, which helps with unpublished or confidential papers. Pull a model with
+  a large context first (`ollama pull qwen3`); the paper is sent with a context of 32,768 tokens. Set `OLLAMA_HOST`
+  if Ollama does not run on `localhost:11434`. Questions are asked one after the other, so Ollama can reuse the
+  processed paper.
+
+Each provider keeps its uploaded papers in its own file (`sources.json`, `sources-claude.json`,
+`sources-ollama.json`). To compare providers, give each its own output folder with `--out`.
+
 ## Usage
 
 ```text
-academia-maestro [--papers DIR] [--out DIR] [--sources FILE] [--questions FILE] [--overwrite] {upload,ask,run}
+academia-maestro [--provider {chatpdf,claude,ollama}] [--model MODEL] [--papers DIR] [--out DIR]
+                 [--sources FILE] [--questions FILE] [--workers N] [--overwrite] {upload,ask,run,table}
 ```
 
 | Command | What it does |
 |---|---|
-| `upload` | Uploads each PDF that is not in `sources.json` yet and stores its ChatPDF source ID there |
-| `ask` | Asks every question about every paper in `sources.json` and writes the answers to the output folder |
+| `upload` | Uploads each PDF that is not in the sources file yet and stores its ID there |
+| `ask` | Asks every question about every uploaded paper and writes the answers to the output folder |
 | `run` | `upload`, then `ask` |
+| `table` | Combines the answers in the output folder into `<out>.csv`, e.g. `Summary.csv` |
 
 | Option | Default | Meaning |
 |---|---|---|
+| `--provider` | `chatpdf` | `chatpdf`, `claude` or `ollama` |
+| `--model` | see [Providers](#providers) | Model for Claude or Ollama |
 | `--papers` | `Reading` | Folder with the PDFs |
 | `--out` | `Summary` | Folder for the JSON answers |
-| `--sources` | `sources.json` | Uploaded PDFs and their source IDs |
+| `--sources` | `sources.json` or `sources-<provider>.json` | Uploaded PDFs and their IDs |
 | `--questions` | six general questions | Text file with your own questions |
-| `--overwrite` | off | Ask again for papers that already have an answer file |
+| `--workers` | 4, Ollama: 1 | Questions asked in parallel |
+| `--overwrite` | off | Ask all questions again, even those with an answer |
 
-The key is read from `CHATPDF_KEY` in the environment, in `.env` or in `.env.local` (which wins).
+Keys are read from the environment, from `.env` or from `.env.local` (which wins).
 
 ## Questions
 
@@ -115,7 +190,7 @@ Each question is sent as its own request, so the answers do not depend on each o
 
 ## Output
 
-`Summary/<paper>.json` maps each question to ChatPDF's answer, or to `null` if the request failed:
+`Summary/<paper>.json` maps each question to the answer, or to `null` if the request failed:
 
 ```json
 {
@@ -124,14 +199,26 @@ Each question is sent as its own request, so the answers do not depend on each o
 }
 ```
 
+`table` turns these files into `Summary.csv`:
+
+| Paper | What methodology did they use? | What is the main contribution of the paper? |
+|---|---|---|
+| smith-2023 | Systematic literature review of 120 papers … | A taxonomy of … |
+| wang-2024 | Experiments on three benchmark data sets … | … |
+
+The CSV is UTF-8 with a byte order mark, so Excel shows umlauts and accents correctly.
+
 ## Repository structure
 
 | Path | Content |
 |---|---|
-| [`src/academia_maestro/cli.py`](src/academia_maestro/cli.py) | Command-line interface, upload and question loop |
-| [`src/academia_maestro/chatpdf.py`](src/academia_maestro/chatpdf.py) | Small client for the ChatPDF API |
+| [`src/academia_maestro/cli.py`](src/academia_maestro/cli.py) | Command-line interface, upload, question loop and CSV table |
+| [`src/academia_maestro/provider.py`](src/academia_maestro/provider.py) | Interface that every provider implements |
+| [`src/academia_maestro/chatpdf.py`](src/academia_maestro/chatpdf.py) | Client for the ChatPDF API |
+| [`src/academia_maestro/claude.py`](src/academia_maestro/claude.py) | Client for the Claude API |
+| [`src/academia_maestro/ollama.py`](src/academia_maestro/ollama.py) | Client for a local Ollama server |
 | [`questions/`](questions/) | Example question lists |
-| [`tests/`](tests/) | Tests with a fake client; they do not call ChatPDF |
+| [`tests/`](tests/) | Tests with fake clients; they call no API |
 
 ## Development
 
@@ -144,8 +231,9 @@ Each question is sent as its own request, so the answers do not depend on each o
 ## Known issues
 
 - ChatPDF limits a conversation to about 2,500 tokens; very long questions are cut off.
-- The tests use a fake client. The 2026 version has not been run against the real API, to avoid costs.
-- Uploaded PDFs stay in your ChatPDF account until you delete them there.
+- Ollama only sees the text of a PDF. Scanned PDFs without a text layer are skipped; figures and tables are lost.
+- The tests use fake clients. The 2026 version has not been run against the real APIs yet, to avoid costs.
+- Uploaded PDFs stay in your ChatPDF account or Claude workspace until you delete them there.
 
 ## License
 
